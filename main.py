@@ -1,3 +1,7 @@
+import sys
+
+sys.path.append('sensors')
+
 from imu_icm20948 import *
 from clock_RV1805 import *
 
