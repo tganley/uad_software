@@ -14,7 +14,10 @@ def initIMU():
     if IMU.connected == False:
         print("The Qwiic ICM20948 device isn't connected to the system. ", file=sys.stderr)
         return
-
+    
+    with open('imu_data.txt', 'a') as f:
+        f.write("Timestamp        Accel_X    Accel_Y    Accel_Z    Gyro_X    Gyro_Y    Gyro_Z    Mag_X    Mag_Y    Mag_Z\n\n")
+        
     IMU.begin()
 
 def collectIMUData(collection_period):
@@ -23,7 +26,8 @@ def collectIMUData(collection_period):
 
     if IMU.dataReady():
         IMU.getAgmt() # read all axis and temp from sensor, note this also updates all instance variables
-        print(str(getTime()))
+        timestamp = getTime()
+
         print(\
          '{: 06d}'.format(IMU.axRaw)\
         , '\t', '{: 06d}'.format(IMU.ayRaw)\
@@ -35,12 +39,19 @@ def collectIMUData(collection_period):
         , '\t', '{: 06d}'.format(IMU.myRaw)\
         , '\t', '{: 06d}'.format(IMU.mzRaw)\
         )
-        print(str(IMU.axRaw))
+ 
         with open('imu_data.txt', 'a') as f:
-            f.write(str(IMU.axRaw))
-            f.write('\t'.join(str(IMU.ayRaw)))
-            f.write(str(IMU.azRaw))
-            f.write('\n')
+            f.write('{: .2f}'.format(timestamp)
+            + '\t' + '{: 06.2f}'.format(IMU.axRaw * 1/131)
+            + '\t' + '{: 06.2f}'.format(IMU.ayRaw * 1/131) 
+            + '\t' + '{: 06.2f}'.format(IMU.azRaw * 1/131)
+            + '\t' + '{: 06.2f}'.format(IMU.gxRaw * 9.81/16348)
+            + '\t' + '{: 06.2f}'.format(IMU.gyRaw * 9.81/16348) 
+            + '\t' + '{: 06.2f}'.format(IMU.gzRaw * 9.81/16348)
+            + '\t' + '{: 06.2f}'.format(IMU.mxRaw * 0.15)
+            + '\t' + '{: 06.2f}'.format(IMU.myRaw * 0.15)
+            + '\t' + '{: 06.2f}'.format(IMU.mzRaw * 0.15)
+            + '\n')
 
         time.sleep(collection_period)
     else:

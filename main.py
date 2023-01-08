@@ -5,7 +5,7 @@ sys.path.append('sensors')
 from imu_icm20948 import *
 from clock_RV1805 import *
 
-IMU_COLLECTION_PERIOD = 0.1
+IMU_COLLECTION_PERIOD = 0.4
 
 
 def system_init():
