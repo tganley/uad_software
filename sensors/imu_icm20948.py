@@ -5,6 +5,11 @@ import sys
 import qwiic_icm20948
 from clock_RV1805 import getTime
 
+ACCELERATION_SCALING_FACTOR = 9.81/16348
+GYROSCOPE_SCALING_FACTOR = 1/131
+MAGNETOMETER_SCALING_FACTOR = 0.15
+
+
 print("This is your captain speaking. All aboard!")
 
 def initIMU():
@@ -42,15 +47,15 @@ def collectIMUData(collection_period):
  
         with open('imu_data.txt', 'a') as f:
             f.write('{: .2f}'.format(timestamp)
-            + '\t' + '{: 06.2f}'.format(IMU.axRaw * 1/131)
-            + '\t' + '{: 06.2f}'.format(IMU.ayRaw * 1/131) 
-            + '\t' + '{: 06.2f}'.format(IMU.azRaw * 1/131)
-            + '\t' + '{: 06.2f}'.format(IMU.gxRaw * 9.81/16348)
-            + '\t' + '{: 06.2f}'.format(IMU.gyRaw * 9.81/16348) 
-            + '\t' + '{: 06.2f}'.format(IMU.gzRaw * 9.81/16348)
-            + '\t' + '{: 06.2f}'.format(IMU.mxRaw * 0.15)
-            + '\t' + '{: 06.2f}'.format(IMU.myRaw * 0.15)
-            + '\t' + '{: 06.2f}'.format(IMU.mzRaw * 0.15)
+            + '\t' + '{: 06.2f}'.format(IMU.axRaw * GYROSCOPE_SCALING_FACTOR)
+            + '\t' + '{: 06.2f}'.format(IMU.ayRaw * GYROSCOPE_SCALING_FACTOR) 
+            + '\t' + '{: 06.2f}'.format(IMU.azRaw * GYROSCOPE_SCALING_FACTOR)
+            + '\t' + '{: 06.2f}'.format(IMU.gxRaw * ACCELERATION_SCALING_FACTOR)
+            + '\t' + '{: 06.2f}'.format(IMU.gyRaw * ACCELERATION_SCALING_FACTOR) 
+            + '\t' + '{: 06.2f}'.format(IMU.gzRaw * ACCELERATION_SCALING_FACTOR)
+            + '\t' + '{: 06.2f}'.format(IMU.mxRaw * MAGNETOMETER_SCALING_FACTOR)
+            + '\t' + '{: 06.2f}'.format(IMU.myRaw * MAGNETOMETER_SCALING_FACTOR)
+            + '\t' + '{: 06.2f}'.format(IMU.mzRaw * MAGNETOMETER_SCALING_FACTOR)
             + '\n')
 
         time.sleep(collection_period)
