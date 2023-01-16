@@ -5,6 +5,7 @@ sys.path.append('sensors')
 from imu_icm20948 import *
 from clock_RV1805 import *
 from simple_pid import PID
+import ms5837
 
 IMU_COLLECTION_PERIOD = 0.4
 
@@ -12,8 +13,14 @@ pid_roll = PID(1, 0.1, 0.05, setpoint = 1)
 pid_pitch = PID(1, 0.1, 0.05, setpoint = 2)
 pid_yaw = PID(1, 0.1, 0.05, setpoint = 3)
 
+pressure_sensor = ms5837.MS5837() # Use defaults (MS5837-30BA device on I2C bus 1)
+
 def system_init():
+    print("This is your captain speaking. All aboard!")
+
     initIMU()
+    pressure_sensor.init()
+    initRTC()
 
 
 def drone_loop():
@@ -25,7 +32,10 @@ def drone_loop():
     while(True):
         # Collect system telemetry
         collectIMUData(IMU_COLLECTION_PERIOD)
-        
+        pressure_sensor.read(ms5837.OSR_8192)
+        meas = pressure_sensor.pressure()
+        #print(str(meas) + ' mbar')
+        '''
         # PID controller uses current roll value to compute new rudder control 
         control_roll = pid_roll(val_roll)
         
@@ -45,6 +55,7 @@ def drone_loop():
         val_yaw = 0 # yaw_system.update(control_yaw)
         
         # Check for waypoint
+        '''
 
 
 if __name__ == '__main__':

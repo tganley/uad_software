@@ -3,35 +3,32 @@
 import time
 import sys
 import qwiic_icm20948
-from clock_RV1805 import getTime
+from clock_RV1805 import getTime_s
 
 ACCELERATION_SCALING_FACTOR = 9.81/16348
 GYROSCOPE_SCALING_FACTOR = 1/131
 MAGNETOMETER_SCALING_FACTOR = 0.15
 
-
-print("This is your captain speaking. All aboard!")
-
 def initIMU():
 
-    IMU = qwiic_icm20948.QwiicIcm20948()
-
+    IMU = qwiic_icm20948.QwiicIcm20948(address = 0x68)
+    print(str(IMU.address))
     if IMU.connected == False:
         print("The Qwiic ICM20948 device isn't connected to the system. ", file=sys.stderr)
         return
     
     with open('imu_data.txt', 'a') as f:
-        f.write("Timestamp        Accel_X    Accel_Y    Accel_Z    Gyro_X    Gyro_Y    Gyro_Z    Mag_X    Mag_Y    Mag_Z\n\n")
+        f.write("Timestamp    Accel_X    Accel_Y    Accel_Z    Gyro_X    Gyro_Y    Gyro_Z    Mag_X    Mag_Y    Mag_Z\n\n")
         
     IMU.begin()
 
 def collectIMUData(collection_period):
 
-    IMU = qwiic_icm20948.QwiicIcm20948()
+    IMU = qwiic_icm20948.QwiicIcm20948(address = 0x68)
 
     if IMU.dataReady():
         IMU.getAgmt() # read all axis and temp from sensor, note this also updates all instance variables
-        timestamp = getTime()
+        timestamp = getTime_s()
 
         print(\
          '{: 06d}'.format(IMU.axRaw)\
@@ -46,7 +43,7 @@ def collectIMUData(collection_period):
         )
  
         with open('imu_data.txt', 'a') as f:
-            f.write('{: .2f}'.format(timestamp)
+            f.write('{: 09.2f}'.format(timestamp)
             + '\t' + '{: 06.2f}'.format(IMU.axRaw * GYROSCOPE_SCALING_FACTOR)
             + '\t' + '{: 06.2f}'.format(IMU.ayRaw * GYROSCOPE_SCALING_FACTOR) 
             + '\t' + '{: 06.2f}'.format(IMU.azRaw * GYROSCOPE_SCALING_FACTOR)
