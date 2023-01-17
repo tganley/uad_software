@@ -7,20 +7,29 @@ from clock_RV1805 import *
 from simple_pid import PID
 import ms5837
 
+DATA_FILE_NAME = "swim_data.txt"
 IMU_COLLECTION_PERIOD = 0.4
 
 pid_roll = PID(1, 0.1, 0.05, setpoint = 1)
 pid_pitch = PID(1, 0.1, 0.05, setpoint = 2)
 pid_yaw = PID(1, 0.1, 0.05, setpoint = 3)
 
+IMU = qwiic_icm20948.QwiicIcm20948(address = 0x68)
+
 pressure_sensor = ms5837.MS5837() # Use defaults (MS5837-30BA device on I2C bus 1)
 
 def system_init():
     print("This is your captain speaking. All aboard!")
 
-    initIMU()
+    initIMU(IMU)
     pressure_sensor.init()
     initRTC()
+
+    with open(DATA_FILE_NAME, 'a') as f:
+        f.write("{:>10s}\t{:>10s}\t{:>10s}\t".format("Timestamp", "Accel_X", "Accel_Y"))
+        f.write("{:>10s}\t{:>10s}\t{:>10s}\t".format("Accel_Z", "Gyro_X", "Gyro_Y"))
+        f.write("{:>10s}\t{:>10s}\t{:>10s}\t".format("Gyro_Z", "Mag_X", "Mag_Y"))
+        f.write("{:>10s}\t{:>10s}\t{:>10s}\t\n".format("Mag_Z", "mbar", "Temp (C)"))
 
 
 def drone_loop():
@@ -31,9 +40,20 @@ def drone_loop():
 
     while(True):
         # Collect system telemetry
-        collectIMUData(IMU_COLLECTION_PERIOD)
+        collectIMUData(IMU, IMU_COLLECTION_PERIOD)
         pressure_sensor.read(ms5837.OSR_8192)
-        meas = pressure_sensor.pressure()
+        
+        timestamp = getTime_s()
+        pressure = pressure_sensor.pressure()
+        temp = pressure_sensor.temperature()
+
+        # Write to file
+        with open(DATA_FILE_NAME, 'a') as file:
+            file.write('{:10.2f}\t'.format(timestamp))
+            writeIMUDataToFile(IMU, file)
+            file.write('{:10.2f}\t'.format(pressure))
+            file.write('{:10.2f}'.format(temp) + '\n')
+            
         #print(str(meas) + ' mbar')
         '''
         # PID controller uses current roll value to compute new rudder control 
