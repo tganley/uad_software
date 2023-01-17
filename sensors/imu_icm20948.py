@@ -41,12 +41,12 @@ def collectIMUData(IMU, collection_period):
         time.sleep(0.5)
 
 def writeIMUDataToFile(IMU, filedes):
-    filedes.write('{: 10.2f}'.format(IMU.axRaw * GYROSCOPE_SCALING_FACTOR)
-    + '\t' + '{: 10.2f}'.format(IMU.ayRaw * GYROSCOPE_SCALING_FACTOR) 
-    + '\t' + '{: 10.2f}'.format(IMU.azRaw * GYROSCOPE_SCALING_FACTOR)
-    + '\t' + '{: 10.2f}'.format(IMU.gxRaw * ACCELERATION_SCALING_FACTOR)
-    + '\t' + '{: 10.2f}'.format(IMU.gyRaw * ACCELERATION_SCALING_FACTOR) 
-    + '\t' + '{: 10.2f}'.format(IMU.gzRaw * ACCELERATION_SCALING_FACTOR)
+    filedes.write('{: 10.2f}'.format(IMU.axRaw * ACCELERATION_SCALING_FACTOR)
+    + '\t' + '{: 10.2f}'.format(IMU.ayRaw * ACCELERATION_SCALING_FACTOR) 
+    + '\t' + '{: 10.2f}'.format(IMU.azRaw * ACCELERATION_SCALING_FACTOR)
+    + '\t' + '{: 10.2f}'.format(IMU.gxRaw * GYROSCOPE_SCALING_FACTOR)
+    + '\t' + '{: 10.2f}'.format(IMU.gyRaw * GYROSCOPE_SCALING_FACTOR) 
+    + '\t' + '{: 10.2f}'.format(IMU.gzRaw * GYROSCOPE_SCALING_FACTOR)
     + '\t' + '{: 10.2f}'.format(IMU.mxRaw * MAGNETOMETER_SCALING_FACTOR)
     + '\t' + '{: 10.2f}'.format(IMU.myRaw * MAGNETOMETER_SCALING_FACTOR)
     + '\t' + '{: 10.2f}'.format(IMU.mzRaw * MAGNETOMETER_SCALING_FACTOR)
