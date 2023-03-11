@@ -2,38 +2,38 @@
 
 import time
 import sys
-import qwiic_icm20948
+from qwiic_icm20948 import *
 from clock_RV1805 import getTime_s
 
-ACCELERATION_SCALING_FACTOR = 9.81/16348
+ACCELERATION_SCALING_FACTOR = 9.81/4096
 GYROSCOPE_SCALING_FACTOR = 1/131
 MAGNETOMETER_SCALING_FACTOR = 0.15
 
 def initIMU(IMU):
+    IMU.swReset
 
     print(str(IMU.address))
     if IMU.connected == False:
         print("The Qwiic ICM20948 device isn't connected to the system. ", file=sys.stderr)
         return
-    IMU.begin()
+    
+    IMU.sleep(False)
+    IMU.lowPower(False)
+    IMU.setSampleMode((ICM_20948_Internal_Acc | ICM_20948_Internal_Gyr), ICM_20948_Sample_Mode_Continuous)
+    IMU.setFullScaleRangeAccel(gpm8)
+    IMU.setFullScaleRangeGyro(dps250)
+    IMU.setDLPFcfgAccel(acc_d50bw4_n68bw8)
+    IMU.setDLPFcfgGyro(gyr_d361bw4_n376bw5)
+    IMU.enableDlpfAccel(True)
+    IMU.enableDlpfGyro(True)
+    IMU.startupMagnetometer()
+
 
 def collectIMUData(IMU, collection_period):
 
     if IMU.dataReady():
         IMU.getAgmt() # read all axis and temp from sensor, note this also updates all instance variables
         timestamp = getTime_s()
-
-        print(\
-         '{: 06d}'.format(IMU.axRaw)\
-        , '\t', '{: 06d}'.format(IMU.ayRaw)\
-        , '\t', '{: 06d}'.format(IMU.azRaw)\
-        , '\t', '{: 06d}'.format(IMU.gxRaw)\
-        , '\t', '{: 06d}'.format(IMU.gyRaw)\
-        , '\t', '{: 06d}'.format(IMU.gzRaw)\
-        , '\t', '{: 06d}'.format(IMU.mxRaw)\
-        , '\t', '{: 06d}'.format(IMU.myRaw)\
-        , '\t', '{: 06d}'.format(IMU.mzRaw)\
-        )
 
         time.sleep(collection_period)
     else:

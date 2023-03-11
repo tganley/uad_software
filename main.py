@@ -3,6 +3,7 @@ sys.path.append('sensors')
 
 from imu_icm20948 import *
 from clock_RV1805 import *
+from wayfinding import *
 from simple_pid import PID
 import ms5837
 import RPi.GPIO as GPIO
@@ -12,7 +13,7 @@ SERVO_FREQUENCY_DEFAULT = 333 #Hz
 SERVO_FREQUENCY_SET = 333 #Hz
 
 DATA_FILE_NAME = "swim_data.txt"
-IMU_COLLECTION_PERIOD = 0.4
+IMU_COLLECTION_PERIOD = 0.01
 
 # PID objects
 pid_roll = PID(1, 0.1, 0.05, setpoint = 1)
@@ -20,7 +21,7 @@ pid_pitch = PID(1, 0.1, 0.05, setpoint = 2)
 pid_yaw = PID(1, 0.1, 0.05, setpoint = 3)
 
 # Inertial measurement unit
-IMU = qwiic_icm20948.QwiicIcm20948(address = 0x68)
+IMU = QwiicIcm20948(address = 0x68)
 
 # Pressure sensor
 pressure_sensor = ms5837.MS5837() # Use defaults (MS5837-30BA device on I2C bus 1)
@@ -52,6 +53,8 @@ def system_init():
     pressure_sensor.init()
     initRTC()
 
+    init_wayfinding(IMU_COLLECTION_PERIOD)
+
     with open(DATA_FILE_NAME, 'a') as f:
         f.write("{:>10s}\t{:>10s}\t{:>10s}\t".format("Timestamp", "Accel_X", "Accel_Y"))
         f.write("{:>10s}\t{:>10s}\t{:>10s}\t".format("Accel_Z", "Gyro_X", "Gyro_Y"))
@@ -75,10 +78,10 @@ def drone_loop():
     while(True):
         rep += 1
 
-
         # Collect system telemetry
         collectIMUData(IMU, IMU_COLLECTION_PERIOD)
         pressure_sensor.read(ms5837.OSR_8192)
+        update_kinematics(IMU)
         
         timestamp = getTime_s()
         pressure = pressure_sensor.pressure()
@@ -114,24 +117,21 @@ def drone_loop():
         # Check for waypoint
         '''
         servo1.ChangeDutyCycle(5*rep % 100)
-        time.sleep(0.5)
         servo2.ChangeDutyCycle(5*rep % 100)
-        time.sleep(0.5)
         servo3.ChangeDutyCycle(5*rep % 100)
-        time.sleep(0.5)
         servo4.ChangeDutyCycle(5*rep % 100)
-        time.sleep(0.5)
 
-        if(GPIO.input(TRIGGER_PIN_D16) != GPIO.LOW):
-            exit()
+        if(GPIO.input(TRIGGER_PIN_D16) != GPIO.HIGH):
+            time.sleep(0.1)#exit()
 
 
 if __name__ == '__main__':
     try:
         system_init()
-        while(GPIO.input(TRIGGER_PIN_D16) == GPIO.HIGH):
+        '''while(GPIO.input(TRIGGER_PIN_D16) == GPIO.HIGH):
             print("high")
             time.sleep(0.5)
+        '''
         drone_loop()
     except (KeyboardInterrupt, SystemExit) as exErr:
         print("\nEnding Example 1")
