@@ -1,5 +1,4 @@
 import sys
-
 sys.path.append('sensors')
 
 from imu_icm20948 import *
@@ -10,29 +9,41 @@ import RPi.GPIO as GPIO
 import time
 
 SERVO_FREQUENCY_DEFAULT = 333 #Hz
-SERVO_FREQUENCY_SET = 100 #Hz
+SERVO_FREQUENCY_SET = 333 #Hz
 
 DATA_FILE_NAME = "swim_data.txt"
 IMU_COLLECTION_PERIOD = 0.4
 
+# PID objects
 pid_roll = PID(1, 0.1, 0.05, setpoint = 1)
 pid_pitch = PID(1, 0.1, 0.05, setpoint = 2)
 pid_yaw = PID(1, 0.1, 0.05, setpoint = 3)
 
+# Inertial measurement unit
 IMU = qwiic_icm20948.QwiicIcm20948(address = 0x68)
 
+# Pressure sensor
 pressure_sensor = ms5837.MS5837() # Use defaults (MS5837-30BA device on I2C bus 1)
 
+# Four rudder control motors
 GPIO.setmode(GPIO.BOARD)
-GPIO.setup(26, GPIO.OUT) #D7
-GPIO.setup(32, GPIO.OUT) #D12
-GPIO.setup(31, GPIO.OUT) #D6
-GPIO.setup(36, GPIO.OUT) #D16
+GPIO.setup(26, GPIO.OUT) # D7 PWM1
+GPIO.setup(32, GPIO.OUT) # D12 PWM2
+GPIO.setup(38, GPIO.OUT) # D20 PWM3
+GPIO.setup(40, GPIO.OUT) # D21 PWM4
+servo1 = GPIO.PWM(26, SERVO_FREQUENCY_SET)
+servo2 = GPIO.PWM(32, SERVO_FREQUENCY_SET)
+servo3 = GPIO.PWM(38, SERVO_FREQUENCY_SET)
+servo4 = GPIO.PWM(40, SERVO_FREQUENCY_SET)
 
-servoD7 = GPIO.PWM(26, SERVO_FREQUENCY_SET)
-servoD12 = GPIO.PWM(32, SERVO_FREQUENCY_SET)
-servoD6 = GPIO.PWM(31, SERVO_FREQUENCY_SET)
-servoD16 = GPIO.PWM(36, SERVO_FREQUENCY_SET)
+# One trigger (input)
+TRIGGER_PIN_D16 = 36
+GPIO.setup(TRIGGER_PIN_D16, GPIO.IN, pull_up_down=GPIO.PUD_UP) # D16 Trigger
+
+# One motor enable (output)
+MOTOR_ENABLE_PIN_D6 = 31
+GPIO.setup(MOTOR_ENABLE_PIN_D6, GPIO.OUT, initial = GPIO.HIGH)
+
 
 def system_init():
     print("This is your captain speaking. All aboard!")
@@ -56,10 +67,10 @@ def drone_loop():
     val_yaw = 90 # yaw_system.update(0)
     rep = 0
 
-    servoD7.start(1)
-    servoD12.start(1)
-    servoD6.start(1)
-    servoD16.start(1)
+    servo1.start(1)
+    servo2.start(1)
+    servo3.start(1)
+    servo4.start(1)
 
     while(True):
         rep += 1
@@ -102,21 +113,31 @@ def drone_loop():
         
         # Check for waypoint
         '''
-        servoD7.ChangeDutyCycle(5*rep % 100)
-        servoD12.ChangeDutyCycle(5*rep % 100)
-        servoD6.ChangeDutyCycle(5*rep % 100)
-        servoD16.ChangeDutyCycle(5*rep % 100)
+        servo1.ChangeDutyCycle(5*rep % 100)
+        time.sleep(0.5)
+        servo2.ChangeDutyCycle(5*rep % 100)
+        time.sleep(0.5)
+        servo3.ChangeDutyCycle(5*rep % 100)
+        time.sleep(0.5)
+        servo4.ChangeDutyCycle(5*rep % 100)
+        time.sleep(0.5)
+
+        if(GPIO.input(TRIGGER_PIN_D16) != GPIO.LOW):
+            exit()
 
 
 if __name__ == '__main__':
     try:
         system_init()
+        while(GPIO.input(TRIGGER_PIN_D16) == GPIO.HIGH):
+            print("high")
+            time.sleep(0.5)
         drone_loop()
     except (KeyboardInterrupt, SystemExit) as exErr:
         print("\nEnding Example 1")
-        servoD7.stop()
-        servoD12.stop()
-        servoD6.stop()
-        servoD16.stop()
+        servo1.stop()
+        servo2.stop()
+        servo3.stop()
+        servo4.stop()
         GPIO.cleanup()
         sys.exit(0)
