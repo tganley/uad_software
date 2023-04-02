@@ -8,17 +8,24 @@ from simple_pid import PID
 import ms5837
 import RPi.GPIO as GPIO
 import time
+import argparse
 
-SERVO_FREQUENCY_DEFAULT = 333 #Hz
+parser = argparse.ArgumentParser(prog='python main.py', description='Runs servo control and telemetry gathering for ECE495 capstone project', epilog='Bottom Text')
+parser.add_argument("-t", "--trigger", action="store_true", help="Use flag if the trigger is connected")
+parser.add_argument("-p", "--program", action="store", default = 1, help="Indicate test program 1, 2, or 3", required = True)
+args = parser.parse_args()
+
 SERVO_FREQUENCY_SET = 333 #Hz
+MAX_TIME_DURATION = 20
 
 DATA_FILE_NAME = "swim_data.txt"
-IMU_COLLECTION_PERIOD = 0.01
+IMU_COLLECTION_PERIOD = 0.1
+SERVO_BOUNDS = [10, 90] # Min and max PWM duty cycles for the servos, corresponding to 0 and 
 
 # PID objects
-pid_roll = PID(1, 0.1, 0.05, setpoint = 1)
-pid_pitch = PID(1, 0.1, 0.05, setpoint = 2)
-pid_yaw = PID(1, 0.1, 0.05, setpoint = 3)
+pid_roll = PID(1, 0.1, 0.05, setpoint = 1, output_limits = SERVO_BOUNDS)
+pid_pitch = PID(1, 0.1, 0.05, setpoint = 2, output_limits = SERVO_BOUNDS)
+pid_yaw = PID(1, 0.1, 0.05, setpoint = 3, output_limits = SERVO_BOUNDS)
 
 # Inertial measurement unit
 IMU = QwiicIcm20948(address = 0x68)
@@ -36,6 +43,10 @@ servo1 = GPIO.PWM(26, SERVO_FREQUENCY_SET)
 servo2 = GPIO.PWM(32, SERVO_FREQUENCY_SET)
 servo3 = GPIO.PWM(38, SERVO_FREQUENCY_SET)
 servo4 = GPIO.PWM(40, SERVO_FREQUENCY_SET)
+servo1.ChangeDutyCycle(50) # 90 degrees, parallel to motion
+servo2.ChangeDutyCycle(50) # 90 degrees, parallel to motion
+servo3.ChangeDutyCycle(50) # 90 degrees, parallel to motion
+servo4.ChangeDutyCycle(50) # 90 degrees, parallel to motion
 
 # One trigger (input)
 TRIGGER_PIN_D16 = 36
@@ -62,10 +73,66 @@ def system_init():
         f.write("{:>10s}\t{:>10s}\t{:>10s}\t\n".format("Mag_Z", "mbar", "Temp (C)"))
 
 
+def testscript1():
+    print("Running test script 1")
+    # Check stern plane alignment
+    while(key != 0x13):
+        key = input("Please confirm the stern planes are aligned with the direction of motion by pressing enter\n")
+    # Check directional effect of duty cycle change
+    direction = input("Enter l, r, u, or d\n")
+    print("Selected", direction, '\n')
+
+    if(direction == 'l'):
+        servo1.ChangeDutyCycle(60)
+        servo3.ChangeDutyCycle(40)
+    elif(direction == 'r'):
+        servo1.ChangeDutyCycle(40)
+        servo3.ChangeDutyCycle(60)
+    elif(direction == 'u'):
+        servo2.ChangeDutyCycle(60)
+        servo4.ChangeDutyCycle(40)
+    elif(direction == 'd'):
+        servo2.ChangeDutyCycle(40)
+        servo4.ChangeDutyCycle(60)
+
+def testscript2():
+    print("Running test script 2")
+    # Sweep through PWM duty cycles
+    for i in range(0,50):
+        servo1.ChangeDutyCycle(2*i)
+        servo2.ChangeDutyCycle(2*i)
+        servo3.ChangeDutyCycle(2*i)
+        servo4.ChangeDutyCycle(2*i)
+        time.sleep(0.2)
+
+    for i in range(0,5):
+        servo1.ChangeDutyCycle(10*i+10)
+        servo2.ChangeDutyCycle(10*i+10)
+        servo3.ChangeDutyCycle(10*i+10)
+        servo4.ChangeDutyCycle(10*i+10)
+        time.sleep(2)
+
+
+
+def testscriptPID():
+    print("Running PID test script")
+    # PID controller uses current pitch value to compute new rudder control 
+    control_pitch = pid_pitch(val_pitch)
+        
+    # Feed PID output to rudder system and get updated pitch value
+    val_pitch = 0 # pitch_system.update(control_pitch)
+
+    # PID controller uses current yaw value to compute new rudder control 
+    control_yaw = pid_yaw(val_yaw)
+        
+    # Feed PID output to rudder system and get updated yaw value
+    val_yaw = 0 # yaw_system.update(control_yaw)
+        
+    # Check for waypoint
+
 
 def drone_loop():
 
-    val_roll = 12 # roll_system.update(0)
     val_pitch = 15 # pitch_system.update(0)
     val_yaw = 90 # yaw_system.update(0)
     rep = 0
@@ -75,13 +142,12 @@ def drone_loop():
     servo3.start(1)
     servo4.start(1)
 
-    while(True):
-        rep += 1
+    initial_time = getTime_s()
 
+    while(True):
         # Collect system telemetry
         collectIMUData(IMU, IMU_COLLECTION_PERIOD)
         pressure_sensor.read(ms5837.OSR_8192)
-        update_kinematics(IMU)
         
         timestamp = getTime_s()
         pressure = pressure_sensor.pressure()
@@ -93,46 +159,37 @@ def drone_loop():
             writeIMUDataToFile(IMU, file)
             file.write('{:10.2f}\t'.format(pressure))
             file.write('{:10.2f}'.format(temp) + '\n')
-            
-        #print(str(meas) + ' mbar')
-        '''
-        # PID controller uses current roll value to compute new rudder control 
-        control_roll = pid_roll(val_roll)
-        
-        # Feed PID output to rudder system and get updated roll value
-        val_roll = 0 # roll_system.update(control_roll)
 
-        # PID controller uses current pitch value to compute new rudder control 
-        control_pitch = pid_pitch(val_pitch)
-        
-        # Feed PID output to rudder system and get updated pitch value
-        val_pitch = 0 # pitch_system.update(control_pitch)
+        if(args.program == 1):    
+            testscript1()
+        elif(args.program == 2):
+            testscript2()
+        elif(args.program == 3):
+            testscriptPID()
 
-        # PID controller uses current yaw value to compute new rudder control 
-        control_yaw = pid_yaw(val_yaw)
-        
-        # Feed PID output to rudder system and get updated yaw value
-        val_yaw = 0 # yaw_system.update(control_yaw)
-        
-        # Check for waypoint
-        '''
-        servo1.ChangeDutyCycle(5*rep % 100)
-        servo2.ChangeDutyCycle(5*rep % 100)
-        servo3.ChangeDutyCycle(5*rep % 100)
-        servo4.ChangeDutyCycle(5*rep % 100)
+        if(args.trigger):
+            # Turn off if the trigger is released
+            if(GPIO.input(TRIGGER_PIN_D16) != GPIO.HIGH):
+                exit()
 
-        if(GPIO.input(TRIGGER_PIN_D16) != GPIO.HIGH):
-            time.sleep(0.1)#exit()
+        # Turn off if max duration exceeded
+        if(initial_time < (getTime_s() - MAX_TIME_DURATION)):
+            exit()
 
 
 if __name__ == '__main__':
     try:
         system_init()
-        '''while(GPIO.input(TRIGGER_PIN_D16) == GPIO.HIGH):
-            print("high")
-            time.sleep(0.5)
-        '''
+
+        # Wait until the trigger is pressed
+        print(args.trigger)
+        if(args.trigger):
+            while(GPIO.input(TRIGGER_PIN_D16) == GPIO.HIGH):
+                time.sleep(0.5)
+        
+        # Call main loop
         drone_loop()
+
     except (KeyboardInterrupt, SystemExit) as exErr:
         print("\nEnding Example 1")
         servo1.stop()
@@ -141,3 +198,4 @@ if __name__ == '__main__':
         servo4.stop()
         GPIO.cleanup()
         sys.exit(0)
+

@@ -11,8 +11,6 @@ MAGNETOMETER_SCALING_FACTOR = 0.15
 
 def initIMU(IMU):
     IMU.swReset
-
-    print(str(IMU.address))
     if IMU.connected == False:
         print("The Qwiic ICM20948 device isn't connected to the system. ", file=sys.stderr)
         return
