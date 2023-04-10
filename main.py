@@ -12,11 +12,12 @@ import argparse
 
 parser = argparse.ArgumentParser(prog='python main.py', description='Runs servo control and telemetry gathering for ECE495 capstone project', epilog='Bottom Text')
 parser.add_argument("-t", "--trigger", action="store_true", help="Use flag if the trigger is connected")
+parser.add_argument("-ps", "--pressuresensor", action="store_true", help="Use flag if the pressure sensor is connected")
 parser.add_argument("-p", "--program", action="store", default = 1, help="Indicate test program 1, 2, or 3", required = True)
 args = parser.parse_args()
 
 SERVO_FREQUENCY_SET = 333 #Hz
-MAX_TIME_DURATION = 20
+MAX_TIME_DURATION = 200
 
 DATA_FILE_NAME = "swim_data.txt"
 IMU_COLLECTION_PERIOD = 0.1
@@ -61,7 +62,8 @@ def system_init():
     print("This is your captain speaking. All aboard!")
 
     initIMU(IMU)
-    pressure_sensor.init()
+    if(args.pressuresensor):
+        pressure_sensor.init()
     initRTC()
 
     init_wayfinding(IMU_COLLECTION_PERIOD)
@@ -74,36 +76,19 @@ def system_init():
 
 
 def testscript1():
-    print("Running test script 1")
     # Check stern plane alignment
-    while(key != 0x13):
-        key = input("Please confirm the stern planes are aligned with the direction of motion by pressing enter\n")
+    input("Please confirm the stern planes are aligned with the direction of motion by pressing enter\n")
     # Check directional effect of duty cycle change
-    direction = input("Enter l, r, u, or d\n")
+    direction = input("Enter Duty Cycle\n")
     print("Selected", direction, '\n')
 
-    if(direction == 'l'):
-        servo1.ChangeDutyCycle(60)
-        servo3.ChangeDutyCycle(40)
-    elif(direction == 'r'):
-        servo1.ChangeDutyCycle(40)
-        servo3.ChangeDutyCycle(60)
-    elif(direction == 'u'):
-        servo2.ChangeDutyCycle(60)
-        servo4.ChangeDutyCycle(40)
-    elif(direction == 'd'):
-        servo2.ChangeDutyCycle(40)
-        servo4.ChangeDutyCycle(60)
+    servo1.ChangeDutyCycle(int(direction))
+    servo2.ChangeDutyCycle(int(direction))
+    servo3.ChangeDutyCycle(int(direction))
+    servo4.ChangeDutyCycle(int(direction))
 
 def testscript2():
-    print("Running test script 2")
     # Sweep through PWM duty cycles
-    for i in range(0,50):
-        servo1.ChangeDutyCycle(2*i)
-        servo2.ChangeDutyCycle(2*i)
-        servo3.ChangeDutyCycle(2*i)
-        servo4.ChangeDutyCycle(2*i)
-        time.sleep(0.2)
 
     for i in range(0,5):
         servo1.ChangeDutyCycle(10*i+10)
@@ -112,10 +97,7 @@ def testscript2():
         servo4.ChangeDutyCycle(10*i+10)
         time.sleep(2)
 
-
-
 def testscriptPID():
-    print("Running PID test script")
     # PID controller uses current pitch value to compute new rudder control 
     control_pitch = pid_pitch(val_pitch)
         
@@ -144,27 +126,39 @@ def drone_loop():
 
     initial_time = getTime_s()
 
+    if(args.program == '1'):     
+        print("Running test script 1")
+    elif(args.program == '2'):
+        print("Running test script 2")
+    elif(args.program == '3'):
+        print("Running PID test script")
+
     while(True):
         # Collect system telemetry
-        collectIMUData(IMU, IMU_COLLECTION_PERIOD)
-        pressure_sensor.read(ms5837.OSR_8192)
+        # collectIMUData(IMU, IMU_COLLECTION_PERIOD)
+        if (args.pressuresensor):
+            pressure_sensor.read(ms5837.OSR_8192)
         
         timestamp = getTime_s()
-        pressure = pressure_sensor.pressure()
-        temp = pressure_sensor.temperature()
+        if(args.pressuresensor):
+            pressure = pressure_sensor.pressure()
+            temp = pressure_sensor.temperature()
+        else:
+            pressure = 900
+            temp = 22
 
         # Write to file
         with open(DATA_FILE_NAME, 'a') as file:
             file.write('{:10.2f}\t'.format(timestamp))
-            writeIMUDataToFile(IMU, file)
+            #writeIMUDataToFile(IMU, file)
             file.write('{:10.2f}\t'.format(pressure))
             file.write('{:10.2f}'.format(temp) + '\n')
 
-        if(args.program == 1):    
+        if(args.program == '1'):     
             testscript1()
-        elif(args.program == 2):
+        elif(args.program == '2'):
             testscript2()
-        elif(args.program == 3):
+        elif(args.program == '3'):
             testscriptPID()
 
         if(args.trigger):
