@@ -1,4 +1,5 @@
 import sys
+import os
 sys.path.append('sensors')
 
 from imu_icm20948 import *
@@ -13,7 +14,7 @@ import argparse
 parser = argparse.ArgumentParser(prog='python main.py', description='Runs servo control and telemetry gathering for ECE495 capstone project', epilog='Bottom Text')
 parser.add_argument("-t", "--trigger", action="store_true", help="Use flag if the trigger is connected")
 parser.add_argument("-ps", "--pressuresensor", action="store_true", help="Use flag if the pressure sensor is connected")
-parser.add_argument("-p", "--program", action="store", default = 1, help="Indicate test program 1, 2, or 3", required = True)
+parser.add_argument("-p", "--program", action="store", default = 1, help="Indicate test program 1, 2, or 3. Any other number will result in no servo control.", required = True)
 args = parser.parse_args()
 
 SERVO_FREQUENCY_SET = 333 #Hz
@@ -61,6 +62,11 @@ GPIO.setup(MOTOR_ENABLE_PIN_D6, GPIO.OUT, initial = GPIO.HIGH)
 def system_init():
     print("This is your captain speaking. All aboard!")
 
+    try:
+        os.remove(DATA_FILE_NAME)
+    except:
+        print("No file to delete")
+
     initIMU(IMU)
     if(args.pressuresensor):
         pressure_sensor.init()
@@ -76,16 +82,14 @@ def system_init():
 
 
 def testscript1():
-    # Check stern plane alignment
-    input("Please confirm the stern planes are aligned with the direction of motion by pressing enter\n")
     # Check directional effect of duty cycle change
-    direction = input("Enter Duty Cycle\n")
-    print("Selected", direction, '\n')
+    d_cycle = input("Enter Duty Cycle\n")
+    print("Selected", d_cycle, '\n')
 
-    servo1.ChangeDutyCycle(int(direction))
-    servo2.ChangeDutyCycle(int(direction))
-    servo3.ChangeDutyCycle(int(direction))
-    servo4.ChangeDutyCycle(int(direction))
+    servo1.ChangeDutyCycle(int(d_cycle))
+    servo2.ChangeDutyCycle(int(d_cycle))
+    servo3.ChangeDutyCycle(int(d_cycle))
+    servo4.ChangeDutyCycle(int(d_cycle))
 
 def testscript2():
     # Sweep through PWM duty cycles
@@ -135,7 +139,7 @@ def drone_loop():
 
     while(True):
         # Collect system telemetry
-        # collectIMUData(IMU, IMU_COLLECTION_PERIOD)
+        collectIMUData(IMU, IMU_COLLECTION_PERIOD)
         if (args.pressuresensor):
             pressure_sensor.read(ms5837.OSR_8192)
         
@@ -150,7 +154,7 @@ def drone_loop():
         # Write to file
         with open(DATA_FILE_NAME, 'a') as file:
             file.write('{:10.2f}\t'.format(timestamp))
-            #writeIMUDataToFile(IMU, file)
+            writeIMUDataToFile(IMU, file)
             file.write('{:10.2f}\t'.format(pressure))
             file.write('{:10.2f}'.format(temp) + '\n')
 
@@ -176,10 +180,11 @@ if __name__ == '__main__':
         system_init()
 
         # Wait until the trigger is pressed
-        print(args.trigger)
         if(args.trigger):
+            print("Waiting for trigger")
             while(GPIO.input(TRIGGER_PIN_D16) == GPIO.HIGH):
                 time.sleep(0.5)
+            print("Trigger pressed!")
         
         # Call main loop
         drone_loop()
